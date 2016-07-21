@@ -13,8 +13,6 @@ window.requestAnimFrame = (function(){
  */
 S(document).ready(function(){
 
-	
-
 	function handleFileSelect(evt) {
 		evt.stopPropagation();
 		evt.preventDefault();
@@ -68,10 +66,15 @@ S(document).ready(function(){
 	document.getElementById('files').addEventListener('change', handleFileSelect, false);
 
 
+	// Function to parse a CSV file and return a JSON structure
+	// Guesses the format of each column based on the data in it.
 	function CSV2JSON(data,start,end){
 
+		// If we haven't sent a start row value we assume there is a header row
 		if(typeof start!=="number") start = 1;
+		// Split by the end of line characters
 		if(typeof data==="string") data = data.split(/[\n\r]+/);
+		// The last row to parse
 		if(typeof end!=="number") end = data.length;
 
 		var line,datum,header,types;
@@ -81,28 +84,43 @@ S(document).ready(function(){
 
 		for(var i = 0; i < end; i++){
 
+			// If there is no content on this line we skip it
+			if(data[i] == "") continue;
+
+			// Split the line by commas (but not commas within quotation marks
 			line = data[i].split(/,(?=(?:[^\"]*\"[^\"]*\")*(?![^\"]*\"))/);
 
-			if(data[i] == "") continue;
 			datum = {};
 			types = {};
+
+			// Loop over each column in the line
 			for(var j=0; j < line.length; j++){
+
+				// Remove any quotes around the column value
 				datum[j] = (line[j][0]=='"' && line[j][line[j].length-1]=='"') ? line[j].substring(1,line[j].length-1) : line[j];
 
+				// If the value parses as a float
 				if(typeof parseFloat(datum[j])==="number" && parseFloat(datum[j]) == datum[j]){
 					types[j] = "float";
+					// Check if it is actually an integer
 					if(typeof parseInt(datum[j])==="number" && parseInt(datum[j])+"" == datum[j]){
 						types[j] = "integer";
+						// If it is an integer and in the range 1700-2100 we'll guess it is a year
 						if(datum[j] >= 1700 && datum[j] < 2100) types[j] = "year";
 					}
-				}else if(datum[j].search(/^(true|false)$/) >= 0){
+				}else if(datum[j].search(/^(true|false)$/i) >= 0){
+					// The format is boolean
 					types[j] = "boolean";
 				}else if(datum[j].search(/https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&\/\/=]*)/) >= 0){
+					// The value looks like a URL
 					types[j] = "URL";
 				}else if(!isNaN(Date.parse(datum[j]))){
+					// The value parses as a date
 					types[j] = "datetime";
 				}else{
+					// Default to a string
 					types[j] = "string";
+					// If the string value looks like a time we set it as that
 					if(datum[j].search(/^[0-2]?[0-9]\:[0-5][0-9]$/) >= 0) types[j] = "time";
 				}
 			}
@@ -112,8 +130,8 @@ S(document).ready(function(){
 			if(i >= start) formats.push(types);
 		}
 		
+		// Now, for each column, we sum the different formats we've found
 		var format = new Array(header.length);
-		
 		for(var j in header){
 			var count = {};
 			for(var i = 0 ; i < formats.length; i++){
@@ -128,8 +146,12 @@ S(document).ready(function(){
 					best = k;
 				}
 			}
+			// Default
 			format[j] = "string";
+
+			// If more than 80% (arbitrary) of the values are a specific format we assume that
 			if(mx > 0.8*newdata.length) format[j] = best;
+
 			// If we have a few floats in with our integers, we change the format to float
 			if(format[j] == "integer" && count['float'] > 0.1*newdata.length) format[j] = "float";
 
@@ -137,21 +159,28 @@ S(document).ready(function(){
 
 		}
 
-		return { 'fields': {'name':header,'title':clone(header),'format':format,'required':req}, 'rows': newdata };
+		// Return the structured data
+		return { 'fields': {'name':header,'title':clone(header),'format':format,'required':req }, 'rows': newdata };
 	}
 
+	// Function to clone a hash otherwise we end up using the same one
 	function clone(hash) {
 		var json = JSON.stringify(hash);
 		var object = JSON.parse(json);
 		return object;
 	}
 
+	// Main function
 	function Schemer(file){
 		
+		// The supported data types as specified in http://csvlint.io/about
 		//this.datatypes = [{"label":"string","ref":"http://www.w3.org/2001/XMLSchema#string"},{"label":"integer","ref":"http://www.w3.org/2001/XMLSchema#int"},{"label":"float","ref":"http://www.w3.org/2001/XMLSchema#float"},{"label":"double","ref":"http://www.w3.org/2001/XMLSchema#double"},{"label":"URL","ref":"http://www.w3.org/2001/XMLSchema#anyURI"},{"label":"boolean","ref":"http://www.w3.org/2001/XMLSchema#boolean"},{"label":"non-positive integer","ref":"http://www.w3.org/2001/XMLSchema#nonPositiveInteger"}, {"label":"positive integer","ref":"http://www.w3.org/2001/XMLSchema#positiveInteger"}, {"label":"non-negative integer","ref":"http://www.w3.org/2001/XMLSchema#nonNegativeInteger"}, {"label":"negative integer","ref":"http://www.w3.org/2001/XMLSchema#negativeInteger"},{"label":"date","ref":"http://www.w3.org/2001/XMLSchema#date"}, {"label":"date & time","ref":"http://www.w3.org/2001/XMLSchema#dateTime"},{"label":"year","ref":"http://www.w3.org/2001/XMLSchema#gYear"},{"label":"year & month","ref":"http://www.w3.org/2001/XMLSchema#gYearMonth"},{"label":"time","ref":"http://www.w3.org/2001/XMLSchema#time "}];
 		this.datatypes = [{"label":"string","ref":"http://www.w3.org/2001/XMLSchema#string"},{"label":"integer","ref":"http://www.w3.org/2001/XMLSchema#int"},{"label":"float","ref":"http://www.w3.org/2001/XMLSchema#float"},{"label":"double","ref":"http://www.w3.org/2001/XMLSchema#double"},{"label":"URL","ref":"http://www.w3.org/2001/XMLSchema#anyURI"},{"label":"boolean","ref":"http://www.w3.org/2001/XMLSchema#boolean"},{"label":"date","ref":"http://www.w3.org/2001/XMLSchema#date"}, {"label":"datetime","ref":"http://www.w3.org/2001/XMLSchema#dateTime"},{"label":"year","ref":"http://www.w3.org/2001/XMLSchema#gYear"},{"label":"time","ref":"http://www.w3.org/2001/XMLSchema#time "}];
+
+		// If we provided a filename we load that now
 		if(file) S().ajax(file,{'complete':this.parseCSV,'this':this,'cache':false});
 
+		// When the user focuses on the schema output, it all gets selected
 		S('#schema textarea').on('focus',function(){
 			this.e[0].select()
 		});
@@ -159,6 +188,7 @@ S(document).ready(function(){
 		return this;
 	}
 
+	// Return an HTML select box for the data types
 	Schemer.prototype.buildSelect = function(typ,row,col){
 		var html = '<select id="'+row+'-'+col+'" data-row="'+row+'" data-col="'+col+'">';
 		for(var t = 0; t < this.datatypes.length; t++) html += "<option"+(this.datatypes[t].label == typ ? " selected=\"selected\"":"")+" value=\""+this.datatypes[t].label+"\">"+this.datatypes[t].label+"</option>";
@@ -166,6 +196,7 @@ S(document).ready(function(){
 		return html;
 	}
 	
+	// Return an HTML true/false select box
 	Schemer.prototype.buildTrueFalse = function(yes,row,col){
 		var html = '<select id="'+row+'-'+col+'" data-row="'+row+'" data-col="'+col+'">';
 		html += '<option'+(yes ? " selected=\"selected\"":"")+' value="true">True</option>';
@@ -174,17 +205,19 @@ S(document).ready(function(){
 		return html;
 	}
 	
-
+	// Parse the CSV file
 	Schemer.prototype.parseCSV = function(data){
 
-		S('#contents').html(data);
-
+		// Convert the CSV to a JSON structure
 		this.data = CSV2JSON(data);
 
+		// Construct the HTML table and the JSON schema
 		this.buildTable().buildSchema();
 	}
 
+	// Construct the HTML table
 	Schemer.prototype.buildTable = function(){
+
 		// Create the data table
 		var table = "";
 		table += "<p>We loaded "+this.data.rows.length+" records.</p>";
@@ -226,6 +259,7 @@ S(document).ready(function(){
 		return this;
 	}
 
+	// Process a form element and update the data structure
 	Schemer.prototype.update = function(id,value){
 		var el = S('#'+id);
 		var row = el.attr('data-row');
@@ -236,14 +270,16 @@ S(document).ready(function(){
 
 		// Go through form elements and update the format/constraints
 		this.buildSchema();
+
 		return this;
 	}
 			
+	// Build the JSON schema
 	Schemer.prototype.buildSchema = function(){
-		var ref,t,c;
+		var ref,t,c,json,i,lines;
 		json = "{\n";
 		json += '\t"fields": [\n';
-		var i = 0;
+		i = 0;
 		for(c in this.data.fields.name){
 			ref = "";
 			for(t = 0 ; t < this.datatypes.length; t++){
@@ -262,55 +298,13 @@ S(document).ready(function(){
 		json += '\t]\n';
 		json += '}';
 		lines = json.split(/\n/);
+		// Set the content of the output and resize the textarea so it is all visible
 		S('#schema textarea').html(''+json+'').css({'height':(lines.length+1)+'em','line-height':'1em'});
 
 		return this;
 	}
 
+	// Define a new instance of the Schemer
 	var scheme = new Schemer('cities.csv');
 	
-/*
-{
-    "fields": [
-        {
-            "name": "OrganisationId",
-            "title": "Organisation ID",
-            "constraints": {
-                "required": true,
-                "type": "http://www.w3.org/TR/xmlschema-2/#int"
-            }
-        },
-        {
-            "name": "WeekDay",
-            "title": "Day of the week",
-            "constraints": {
-                "required": true,
-                "pattern": "(Mon|Tue|Wednes|Thurs|Fri|Satur|Sun)day"
-            }
-        },
-        {
-            "name": "Times",
-            "constraints": {
-                "required": true,
-                "pattern": "(0[0-9]|1[0-2]):[0-5][0-9]-(0[0-9]|1[0-2]):[0-5][0-9]"
-            }
-        },
-        {
-            "name": "IsOpen",
-            "title": "Open?",
-            "constraints": {
-                "required": true,
-                "pattern": "(True|False)"
-            }
-        },
-        {
-            "name": "OpeningTimeType",
-            "title": "General or additional opening",
-            "constraints": {
-                "required": true,
-                "pattern": "(General|Additional)"
-            }
-        }
-    ]
-}*/
 });

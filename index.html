@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width" />
 	<title>JSON Schema Builder</title>
 	<link rel="StyleSheet" href="style.css" type="text/css" />
 	<link href="favicon.ico" rel="shortcut icon" type="image/vnd.microsoft.icon">
@@ -46,6 +48,7 @@
 	table td, table th {
 		padding: 4px;
 		border: 1px solid #ccc;
+		border-right: 1px solid #aaa;
 	}
 	.block {
 		min-height: auto;
@@ -60,12 +63,27 @@
 	textarea {
 		width: 100%;
 		min-height: 10em;
+		padding: 6px;
 	}
 	table .constraint label { width: auto; display: inline-block; }
 	table .constraint select { width: auto; display: inline-block; }
 	table button {
 		padding: 2px 4px;
 		margin-left: 2px;
+	}
+	#main .seasonal .holder { position: relative; }
+	.label {
+		display: block;
+		position: absolute;
+		top: -4px;
+		left: 29em;
+		font-size: 0.75em;
+		font-weight: bold;
+		background-color: black;
+		padding: 4px 8px 2px 8px;
+		border-radius: 0.25em;
+		vertical-align: baseline;
+		white-space: nowrap; 
 	}
 	</style>
 	<script type="text/javascript" src="jsonschema.js"></script>
@@ -75,7 +93,7 @@
 		<div class="b1-bg glory">
 			<div class="glory-opacity">
 				<div class="holder">
-					<a href="http://odileeds.org/"><img alt="ODI Leeds" src="odileeds.svg"></a>
+					<a href="http://odileeds.org/"><img alt="ODI Leeds" src="odileeds.svg" title="ODI Leeds"></a>
 				</div>
 			</div>
 		</div>
@@ -84,7 +102,7 @@
 	<div id="main">
 		<div class="seasonal">
 			<div class="holder">
-				<h1>JSON Schema Builder</h1>
+				<h1>JSON Schema Builder</h1><span class="label">ALPHA</span>
 			</div>
 		</div>
 
