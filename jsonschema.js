@@ -189,7 +189,7 @@ S(document).ready(function(){
 		var table = "";
 		table += "<p>We loaded "+this.data.rows.length+" records.</p>";
 		table += "<div class=\"table-holder\"><table>";
-		table += '<tr><th>Name:</th>';
+		table += '<tr><th>Title:</th>';
 		for(var c in this.data.fields.name){
 			table += '<th><input id="title-'+c+'" type="text" value="'+this.data.fields.title[c]+'" data-row="title" data-col="'+c+'" /></th>';
 		}
