@@ -3,25 +3,41 @@
 <head>
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width" />
-	<title>JSON Schema Builder</title>
+	<title>JSON Table Schema Builder</title>
 	<link rel="StyleSheet" href="style.css" type="text/css" />
 	<link href="favicon.ico" rel="shortcut icon" type="image/vnd.microsoft.icon">
 	<meta name="twitter:card" content="summary">
 	<meta name="twitter:site" content="@ODILeeds">
 	<meta name="twitter:url" property="og:url" content="http://odileeds.github.io/JSONSchema/">
-	<meta name="twitter:title" property="og:title" content="JSON Schema Builder">
-	<meta name="twitter:description" property="og:description" content="Auto-magically build a JSON schema from a CSV file">
+	<meta name="twitter:title" property="og:title" content="JSON Table Schema Builder">
+	<meta name="twitter:description" property="og:description" content="Auto-magically build a JSON table schema from a CSV file">
 	<meta name="twitter:image" property="og:image" content="http://odileeds.org/resources/images/odileeds.png">
 	<style>
-	#drop_zone {
-		border: 2px dashed #bbb;
+	.dropzone {
+		border: 2px dashed #999999;
 		border-radius: 5px;
-		color: #bbb;
+		color: #333333;
 		padding: 25px;
 		text-align: center;
+		position: relative;
 	}
-	#drop_zone.drop {
+	.dropzone.loaded {
+		border: 2px solid #333333;
+		color: #333333;
+	}
+	.dropzone.loaded .helpertext {
+		display: none;
+	}
+	.dropzone.drop {
 		background-color: #ddd;
+	}
+	.dropzone input {
+		position: absolute;
+		left: 0px;
+		top: 0px;
+		width: 100%;
+		height: 100%;
+		opacity: 0;
 	}
 	.glory .holder, .glory-opacity {
 		height: auto;
@@ -30,9 +46,8 @@
 		overflow-x: auto;
 		width: 100%;
 	}
-	.table-holder, .fileselect, #schema textarea {
-		margin-bottom: 32px;
-	}
+	#schema textarea, #schema_file { margin-bottom: 16px; }
+	h2, h3 { margin-top: 48px; }
 	table {
 		border-collapse: collapse;
 	}
@@ -76,7 +91,7 @@
 		display: block;
 		position: absolute;
 		top: -4px;
-		left: 29em;
+		right: 0em;
 		font-size: 0.75em;
 		font-weight: bold;
 		background-color: black;
@@ -84,6 +99,16 @@
 		border-radius: 0.25em;
 		vertical-align: baseline;
 		white-space: nowrap; 
+	}
+	#validate {
+		display: none;
+	}
+	.checked:before {
+		content: "✓";
+		color: #1dd3a7;
+		font-size: 2em;
+		left: -0.5em;
+		position: absolute;
 	}
 	</style>
 	<script type="text/javascript" src="jsonschema.js"></script>
@@ -102,27 +127,54 @@
 	<div id="main">
 		<div class="seasonal">
 			<div class="holder">
-				<h1>JSON Schema Builder</h1><span class="label">ALPHA</span>
+				<h1>JSON Table Schema Builder</h1><span class="label">ALPHA</span>
 			</div>
 		</div>
 
 		<div class="holder">
-			<p>Auto-magically generate a JSON schema file to go with a CSV file. Just follow these three steps:</p>
-			<h2>1. Select a CSV file</h2>
-			<p>Add your CSV file (we'll only work with it within your browser; it won't get uploaded anywhere).</p>
-			<div id="drop_zone" class="block">Drop CSV file here</div>
-			<input type="file" id="files" name="files[]" multiple class="fileselect" />
-			<output id="list"></output>
-			<h2>2. Check the auto-detection</h2>
-			<p>We make a guess at the data types for each column based on the majority of the values. Check our guesses and change them if necessary. You can also edit the column headings that will be used in the schema. Remember to scroll to the right for wide tables to see all the columns.</p>
-			<output id="contents"></output>
-			<h2>3. Copy the JSON Schema</h2>
-			<p>Save the schema as a file with a .json extension.</p>
-			<output id="schema">
-				<textarea></textarea>
-			</output>
-			<h3>Footnote</h3>
-			<p>Be awesome and <a href="http://csvlint.io/">check that your CSV file and JSON schema validate</a>.</p>
+			<form id="validation_form" method="post" enctype="multipart/form-data" action="http://csvlint.io/package" accept-charset="UTF-8">
+				<input id="no_js" type="hidden" name="no_js" value="1" />
+				<input type="hidden" value="✓" name="utf8">
+				<input type="hidden" name="urls[]" value="" />
+				<input type="hidden" name="urls[]" value="" />
+				<input type="hidden" name="files[]" value="" />
+
+				<p>Auto-magically generate a JSON table schema file to go with a CSV file. Just follow these three (or four) steps:</p>
+
+				<h2 class="step1">1. Select a CSV file</h2>
+				<p>Add your CSV file (we'll work with it within your browser; it won't get uploaded anywhere unless you choose to do the validation step at the end).</p>
+				<div id="drop_zone" class="dropzone block">
+					<div class="helpertext">
+						Drop CSV file here (or click to browse files)<br />
+						<input id="standard_files" class="fileselect" type="file" title="browse" name="files[]" multiple="multiple" accept=".csv, .tsv, .txt, .zip">
+					</div>
+				</div>
+				<output id="list"></output>
+
+				<h2 class="step2">2. Check the auto-detection</h2>
+				<p>We make a guess at the data types for each column based on the majority of the values. Check our guesses and change them if necessary. You can also edit the column headings that will be used in the schema. Remember to scroll to the right for wide tables to see all the columns.</p>
+				<output id="contents"></output>
+
+				<h2 class="step3">3. Save the JSON Table Schema</h2>
+				<output id="schema">
+					<textarea></textarea>
+				</output>
+				<p><button type="button" id="save" class="c5-bg">Save your schema</button> or copy and paste the output into a file with a .json extension.</p>
+
+				<h2 class="step4">4. Validate</h2>
+				<p><strong>Optional:</strong> be extra awesome and check that your CSV and JSON table schema validate on <a href="http://csvlint.io/">CSVlint.io</a>. If you'd like to do that, first you'll have to select the JSON file that you just created:</p>
+				<input id="schema" type="hidden" value="1" name="schema" />
+				<input id="schema_url" type="hidden" value="" name="schema_url" />
+				<div id="drop_zone_json" class="dropzone block">
+					<div class="helpertext">
+						Drop JSON file here (or click to browse files)<br />
+						<input id="schema_file" class="fileselect" type="file" name="schema_file" accept=".json" />
+					</div>
+				</div>
+				<input type="hidden" name="file_ids[]" value="" />
+				<p><button id="validate" class="c5-bg" type="submit">Validate on CSVlint.io</button></p>
+				<p><strong>Warning: validating will mean that your CSV file and JSON schema are sent to CSVlint.</strong></p>
+			</form>
 		</div>
 	</div>
 

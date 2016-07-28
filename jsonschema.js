@@ -13,57 +13,6 @@ window.requestAnimFrame = (function(){
  */
 S(document).ready(function(){
 
-	function handleFileSelect(evt) {
-		evt.stopPropagation();
-		evt.preventDefault();
-		dragOff();
-
-		var files;
-		if(evt.dataTransfer && evt.dataTransfer.files) files = evt.dataTransfer.files; // FileList object.
-		if(!files && evt.target && evt.target.files) files = evt.target.files;
-
-		// files is a FileList of File objects. List some properties.
-		var output = [];
-		for (var i = 0, f; f = files[i]; i++) {
-			output.push('<li><strong>', escape(f.name), '</strong> (', f.type || 'n/a', ') - ',
-				f.size, ' bytes, last modified: ',
-				f.lastModifiedDate ? f.lastModifiedDate.toLocaleDateString() : 'n/a',
-				'</li>');
-
-			// Only process image files.
-			if(!f.type.match('text/csv')) continue;
-
-			var reader = new FileReader();
-
-			// Closure to capture the file information.
-			reader.onload = (function(theFile) {
-				return function(e) {
-					// Render table
-					scheme.parseCSV(e.target.result);
-				};
-			})(f);
-
-			// Read in the image file as a data URL.
-			reader.readAsText(f);
-		}
-		document.getElementById('list').innerHTML = '<ul>' + output.join('') + '</ul>';
-	}
-
-	function handleDragOver(evt) {
-		evt.stopPropagation();
-		evt.preventDefault();
-		S('#drop_zone').addClass('drop');
-		evt.dataTransfer.dropEffect = 'copy'; // Explicitly show this is a copy.
-	}
-
-	function dragOff(){ S('#drop_zone').removeClass('drop'); }
-
-	// Setup the dnd listeners.
-	var dropZone = document.getElementById('drop_zone');
-	dropZone.addEventListener('dragover', handleDragOver, false);
-	dropZone.addEventListener('dragout', dragOff, false);
-	dropZone.addEventListener('drop', handleFileSelect, false);
-	document.getElementById('files').addEventListener('change', handleFileSelect, false);
 
 
 	// Function to parse a CSV file and return a JSON structure
@@ -134,6 +83,10 @@ S(document).ready(function(){
 		var format = new Array(header.length);
 		for(var j in header){
 			var count = {};
+			var empty = 0;
+			for(var i = 0; i < newdata.length; i++){
+				if(!newdata[i][j]) empty++;
+			}
 			for(var i = 0 ; i < formats.length; i++){
 				if(!count[formats[i][j]]) count[formats[i][j]] = 0;
 				count[formats[i][j]]++;
@@ -155,7 +108,7 @@ S(document).ready(function(){
 			// If we have a few floats in with our integers, we change the format to float
 			if(format[j] == "integer" && count['float'] > 0.1*newdata.length) format[j] = "float";
 
-			if(i >= start) req.push(true);
+			req.push(empty == 0);
 
 		}
 
@@ -169,6 +122,13 @@ S(document).ready(function(){
 		var object = JSON.parse(json);
 		return object;
 	}
+
+	function dropOver(evt){
+		evt.stopPropagation();
+		evt.preventDefault();
+		S(this).addClass('drop');
+	}
+	function dragOff(){ S('.drop').removeClass('drop'); }
 
 	// Main function
 	function Schemer(file){
@@ -184,6 +144,29 @@ S(document).ready(function(){
 		S('#schema textarea').on('focus',function(){
 			this.e[0].select()
 		});
+		
+		S('#save').on('click',{me:this},function(e){
+			e.data.me.save();
+		});
+
+		var _obj = this;
+
+		// Setup the dnd listeners.
+		var dropZone = document.getElementById('drop_zone');
+		dropZone.addEventListener('dragover', dropOver, false);
+		dropZone.addEventListener('dragout', dragOff, false);
+
+		var dropZone2 = document.getElementById('drop_zone_json');
+		dropZone2.addEventListener('dragover', dropOver, false);
+		dropZone2.addEventListener('dragout', dragOff, false);
+
+
+		document.getElementById('standard_files').addEventListener('change', function(evt){
+			return _obj.handleFileSelect(evt,'csv');
+		}, false);
+		document.getElementById('schema_file').addEventListener('change',function(evt){
+			return _obj.handleFileSelect(evt,'json');
+		}, false);
 
 		return this;
 	}
@@ -206,8 +189,10 @@ S(document).ready(function(){
 	}
 	
 	// Parse the CSV file
-	Schemer.prototype.parseCSV = function(data){
+	Schemer.prototype.parseCSV = function(data,attr){
 
+		this.csv = data;
+		
 		// Convert the CSV to a JSON structure
 		this.data = CSV2JSON(data);
 
@@ -298,13 +283,101 @@ S(document).ready(function(){
 		json += '\t]\n';
 		json += '}';
 		lines = json.split(/\n/);
+		this.json = json;
 		// Set the content of the output and resize the textarea so it is all visible
 		S('#schema textarea').html(''+json+'').css({'height':(lines.length+1)+'em','line-height':'1em'});
 
 		return this;
 	}
 
+	Schemer.prototype.save = function(){
+
+		// Bail out if there is no Blob function
+		if(typeof Blob!=="function") return this;
+
+		var textFileAsBlob = new Blob([this.json], {type:'text/plain'});
+		if(!this.file) this.file = "schema.json";
+		var fileNameToSaveAs = this.file.substring(0,this.file.lastIndexOf("."))+".json";
+
+		function destroyClickedElement(event){ document.body.removeChild(event.target); }
+
+		var dl = document.createElement("a");
+		dl.download = fileNameToSaveAs;
+		dl.innerHTML = "Download File";
+		if(window.webkitURL != null){
+			// Chrome allows the link to be clicked
+			// without actually adding it to the DOM.
+			dl.href = window.webkitURL.createObjectURL(textFileAsBlob);
+		}else{
+			// Firefox requires the link to be added to the DOM
+			// before it can be clicked.
+			dl.href = window.URL.createObjectURL(textFileAsBlob);
+			dl.onclick = destroyClickedElement;
+			dl.style.display = "none";
+			document.body.appendChild(dl);
+		}
+		dl.click();
+		S('.step3').addClass('checked');
+
+		return this;
+	}
+
+	Schemer.prototype.handleFileSelect = function(evt,typ){
+		evt.stopPropagation();
+		evt.preventDefault();
+		dragOff();
+
+		var files;
+		if(evt.dataTransfer && evt.dataTransfer.files) files = evt.dataTransfer.files; // FileList object.
+		if(!files && evt.target && evt.target.files) files = evt.target.files;
+		console.log(files,files.length,this)
+
+
+		if(typ == "csv"){
+
+			// files is a FileList of File objects. List some properties.
+			var output = "";
+			for (var i = 0, f; i < files.length; i++) {
+				f = files[i];
+				this.file = f.name;
+				output += '<div><strong>'+ escape(f.name)+ '</strong> ('+ (f.type || 'n/a')+ ') - ' + f.size + ' bytes, last modified: ' + (f.lastModifiedDate ? f.lastModifiedDate.toLocaleDateString() : 'n/a') + '</div>';
+
+				// Only process csv files.
+				if(!f.type.match('text/csv')) continue;
+
+				var reader = new FileReader();
+
+				// Closure to capture the file information.
+				reader.onload = (function(theFile) {
+					return function(e) {
+						// Render table
+						scheme.parseCSV(e.target.result,{'url':f.name});
+					};
+				})(f);
+
+				// Read in the image file as a data URL.
+				reader.readAsText(f);
+			}
+			//document.getElementById('list').innerHTML = '<p>File loaded:</p><ul>' + output.join('') + '</ul>';
+			S('#drop_zone').append(output).addClass('loaded');
+			S('.step1').addClass('checked');
+		}else if(typ == "json"){
+
+			f = files[0];
+			output = '<div><strong>'+ escape(f.name)+ '</strong> ('+ (f.type || 'n/a')+ ') - ' + f.size + ' bytes, last modified: ' + (f.lastModifiedDate ? f.lastModifiedDate.toLocaleDateString() : 'n/a') + '</div>';
+			S('#drop_zone_json').append(output).addClass('loaded');
+			S('#validate').css({'display':'block'});
+			S('.step4').addClass('checked');
+		}
+		return this;
+	}
+
+	Schemer.prototype.validate = function(){
+
+		return false;
+	}
+
 	// Define a new instance of the Schemer
-	var scheme = new Schemer('cities.csv');
+	var scheme = new Schemer();
 	
 });

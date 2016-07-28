@@ -1,0 +1,36 @@
+{
+	"fields": [
+		{
+			"name": "City",
+			"title": "City",
+			"constraints": {
+				"required": true,
+				"type": "http://www.w3.org/2001/XMLSchema#string"
+			}
+		},
+		{
+			"name": "Year granted or confirmed",
+			"title": "Year granted or confirmed",
+			"constraints": {
+				"required": false,
+				"type": "http://www.w3.org/2001/XMLSchema#gYear"
+			}
+		},
+		{
+			"name": "Nation/Region",
+			"title": "Nation/Region",
+			"constraints": {
+				"required": true,
+				"type": "http://www.w3.org/2001/XMLSchema#string"
+			}
+		},
+		{
+			"name": "Population",
+			"title": "Population",
+			"constraints": {
+				"required": true,
+				"type": "http://www.w3.org/2001/XMLSchema#int"
+			}
+		}
+	]
+}
