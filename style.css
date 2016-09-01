@@ -335,6 +335,8 @@ body.front .glory-image {
 p.source { font-weight: 700; }
 .narrow-only { display: none; }
 
+table td.n { text-align: center; }
+
 .c1-bg, .elsewhere .facebook:hover, .c1-bg-hover:hover { background-color: #2254F4; color: white; }
 .c2-bg, .c2-bg-hover:hover { background-color: #178CFF; color: white; }
 .c3-bg, .elsewhere .twitter:hover, .c3-bg-hover:hover { background-color: #00B6FF; color: white; }

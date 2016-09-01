@@ -25,12 +25,18 @@ S(document).ready(function(){
 		// The last row to parse
 		if(typeof end!=="number") end = data.length;
 
+		if(end > data.length){
+			// Cut down to the maximum length
+			end = data.length;
+		}
+
+
 		var line,datum,header,types;
 		var newdata = new Array();
 		var formats = new Array();
 		var req = new Array();
 
-		for(var i = 0; i < end; i++){
+		for(var i = 0, rows = 0 ; i < end; i++){
 
 			// If there is no content on this line we skip it
 			if(data[i] == "") continue;
@@ -38,8 +44,8 @@ S(document).ready(function(){
 			// Split the line by commas (but not commas within quotation marks
 			line = data[i].split(/,(?=(?:[^\"]*\"[^\"]*\")*(?![^\"]*\"))/);
 
-			datum = {};
-			types = {};
+			datum = new Array(line.length);
+			types = new Array(line.length);
 
 			// Loop over each column in the line
 			for(var j=0; j < line.length; j++){
@@ -74,13 +80,16 @@ S(document).ready(function(){
 			}
 
 			if(i == 0 && start > 0) header = datum;
-			if(i >= start) newdata.push(datum);
-			if(i >= start) formats.push(types);
+			if(i >= start){
+				newdata[rows] = datum;
+				formats[rows] = types;
+				rows++;
+			}
 		}
 		
 		// Now, for each column, we sum the different formats we've found
 		var format = new Array(header.length);
-		for(var j in header){
+		for(var j = 0; j < header.length; j++){
 			var count = {};
 			var empty = 0;
 			for(var i = 0; i < newdata.length; i++){
@@ -129,8 +138,28 @@ S(document).ready(function(){
 	}
 	function dragOff(){ S('.drop').removeClass('drop'); }
 
+	String.prototype.regexLastIndexOf = function(regex, startpos) {
+		regex = (regex.global) ? regex : new RegExp(regex.source, "g" + (regex.ignoreCase ? "i" : "") + (regex.multiLine ? "m" : ""));
+		if(typeof (startpos) == "undefined") {
+			startpos = this.length;
+		} else if(startpos < 0) {
+			startpos = 0;
+		}
+		var stringToWorkWith = this.substring(0, startpos + 1);
+		var lastIndexOf = -1;
+		var nextStop = 0;
+		while((result = regex.exec(stringToWorkWith)) != null) {
+			lastIndexOf = result.index;
+			regex.lastIndex = ++nextStop;
+		}
+		return lastIndexOf;
+	}
+
 	// Main function
 	function Schemer(file){
+
+		this.maxrows = 1000;	// Limit on the number of rows to display
+		this.maxcells = 3000;	// The row limit can be over-ridden by the maximum number of cells to show
 		
 		// The supported data types as specified in http://csvlint.io/about
 		//this.datatypes = [{"label":"string","ref":"http://www.w3.org/2001/XMLSchema#string"},{"label":"integer","ref":"http://www.w3.org/2001/XMLSchema#int"},{"label":"float","ref":"http://www.w3.org/2001/XMLSchema#float"},{"label":"double","ref":"http://www.w3.org/2001/XMLSchema#double"},{"label":"URL","ref":"http://www.w3.org/2001/XMLSchema#anyURI"},{"label":"boolean","ref":"http://www.w3.org/2001/XMLSchema#boolean"},{"label":"non-positive integer","ref":"http://www.w3.org/2001/XMLSchema#nonPositiveInteger"}, {"label":"positive integer","ref":"http://www.w3.org/2001/XMLSchema#positiveInteger"}, {"label":"non-negative integer","ref":"http://www.w3.org/2001/XMLSchema#nonNegativeInteger"}, {"label":"negative integer","ref":"http://www.w3.org/2001/XMLSchema#negativeInteger"},{"label":"date","ref":"http://www.w3.org/2001/XMLSchema#date"}, {"label":"date & time","ref":"http://www.w3.org/2001/XMLSchema#dateTime"},{"label":"year","ref":"http://www.w3.org/2001/XMLSchema#gYear"},{"label":"year & month","ref":"http://www.w3.org/2001/XMLSchema#gYearMonth"},{"label":"time","ref":"http://www.w3.org/2001/XMLSchema#time "}];
@@ -192,11 +221,22 @@ S(document).ready(function(){
 
 		this.csv = data;
 
-		// Convert the CSV to a JSON structure
-		this.data = CSV2JSON(data);
+		if(attr.cols*this.maxrows > this.maxcells){
+			// We have lots of columns meaning that we have more cells that we're allowing
+			// so limit the number of rows
+			this.maxrows = Math.floor(this.maxcells/attr.cols);
+		}
+		this.records = attr.rows; 
 
-		// Construct the HTML table and the JSON schema
-		this.buildTable().buildSchema();
+		// Convert the CSV to a JSON structure
+		this.data = CSV2JSON(data,1,this.maxrows+1);
+
+		// Construct the HTML table
+		this.buildTable()
+		// and the JSON schema
+		this.buildSchema();
+
+		return;
 	}
 
 	// Construct the HTML table
@@ -204,12 +244,19 @@ S(document).ready(function(){
 
 		// Create the data table
 		var table = "";
-		table += "<p>We loaded "+this.data.rows.length+" records.</p>";
+		var mx = Math.min(this.data.rows.length,this.maxrows);
+		if(mx == this.maxrows){
+			table += '<p>We only processed the <em>first '+this.maxrows+" records</em> so that we don't crash your browser.</p>";
+		}else{
+			table += "<p>We loaded <em>"+this.records+" records</em>.</p>";
+		}
 		table += "<div class=\"table-holder\"><table>";
 		table += '<tr><th>Title:</th>';
+
 		for(var c in this.data.fields.name){
 			table += '<th><input id="title-'+c+'" type="text" value="'+this.data.fields.title[c]+'" data-row="title" data-col="'+c+'" /></th>';
 		}
+
 		table += '</tr>';
 		table += '<tr><th>Type:</th>';
 		for(var c in this.data.fields.name){
@@ -222,16 +269,17 @@ S(document).ready(function(){
 			table += '<th class="constraint"><label>Required?</label>'+this.buildTrueFalse(this.data.fields.required[c],"required",c)+'<!--<button class="delete" title="Remove this constraint from this column">&times;</button><button class="add" title="Add a constraint to this column">&plus;</button>--></th>';
 		}
 		table += '</tr>';
-		for(var i = 0; i < this.data.rows.length; i++){
 
-			table += '<tr><td class="rownum">'+(i+1)+'</td>';
-			for(var c in this.data.rows[i]){
-				table += '<td '+(this.data.fields.format[c] == "float" || this.data.fields.format[c] == "integer" || this.data.fields.format[c] == "year" || this.data.fields.format[c] == "date" || this.data.fields.format[c] == "datetime" ? ' class="number"' : '')+'>'+this.data.rows[i][c]+'</td>';
+		for(var i = 0; i < mx; i++){
+			table += '<tr><td class="rn">'+(i+1)+'</td>';
+			for(var c = 0; c < this.data.rows[i].length; c++){
+				table += '<td '+(this.data.fields.format[c] == "float" || this.data.fields.format[c] == "integer" || this.data.fields.format[c] == "year" || this.data.fields.format[c] == "date" || this.data.fields.format[c] == "datetime" ? ' class="n"' : '')+'>'+this.data.rows[i][c]+'</td>';
 			}
 			table += '</tr>';
 		}
 		table += '</table></div>';
 		S('#contents').html(table);
+
 		S('#contents select').on('change',{me:this},function(e,i){
 			var el = document.getElementById(e.currentTarget.id);
 			var value = el.options[el.selectedIndex].value;
@@ -345,18 +393,30 @@ S(document).ready(function(){
 				// DEPRECATED as not reliable // Only process csv files.
 				//if(!f.type.match('text/csv')) continue;
 
+				var start = 0;
+				var stop = Math.min(100000, f.size - 1);
+
 				var reader = new FileReader();
 
 				// Closure to capture the file information.
-				reader.onload = (function(theFile) {
-					return function(e) {
-						// Render table
-						scheme.parseCSV(e.target.result,{'url':f.name});
-					};
-				})(f);
+				reader.onloadend = function(evt) {
+					if (evt.target.readyState == FileReader.DONE) { // DONE == 2
+						if(stop > f.size - 1){
+							var l = evt.target.result.regexLastIndexOf(/[\n\r]/);
+							result = (l > 0) ? evt.target.result.slice(0,l) : evt.target.result;
+						}else result = evt.target.result;
 
+						var lines = result.match(/[\n\r]+/g);
+						var cols = result.slice(0,result.indexOf("\n")).split(/,(?=(?:[^\"]*\"[^\"]*\")*(?![^\"]*\"))/);
+						// Render table
+						scheme.parseCSV(result,{'url':f.name,'cols':cols.length,'rows':lines.length});
+					}
+				};
+				
 				// Read in the image file as a data URL.
-				reader.readAsText(f);
+				//reader.readAsText(f);
+				var blob = f.slice(start,stop+1);
+				reader.readAsText(blob);
 			}
 			//document.getElementById('list').innerHTML = '<p>File loaded:</p><ul>' + output.join('') + '</ul>';
 			S('#drop_zone').append(output).addClass('loaded');
