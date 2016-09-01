@@ -379,6 +379,13 @@ S(document).ready(function(){
 		if(evt.dataTransfer && evt.dataTransfer.files) files = evt.dataTransfer.files; // FileList object.
 		if(!files && evt.target && evt.target.files) files = evt.target.files;
 
+		function niceSize(b){
+			if(b > 1e12) return (b/1e12).toFixed(2)+" TB";
+			if(b > 1e9) return (b/1e9).toFixed(2)+" GB";
+			if(b > 1e6) return (b/1e6).toFixed(2)+" MB";
+			if(b > 1e3) return (b/1e3).toFixed(2)+" kB";
+			return (b)+" bytes";
+		}
 
 		if(typ == "csv"){
 
@@ -388,7 +395,7 @@ S(document).ready(function(){
 				f = files[i];
 
 				this.file = f.name;
-				output += '<div><strong>'+ escape(f.name)+ '</strong> ('+ (f.type || 'n/a')+ ') - ' + f.size + ' bytes, last modified: ' + (f.lastModifiedDate ? f.lastModifiedDate.toLocaleDateString() : 'n/a') + '</div>';
+				output += '<div><strong>'+ escape(f.name)+ '</strong> ('+ (f.type || 'n/a')+ ') - ' + niceSize(f.size) + ', last modified: ' + (f.lastModifiedDate ? f.lastModifiedDate.toLocaleDateString() : 'n/a') + '</div>';
 
 				// DEPRECATED as not reliable // Only process csv files.
 				//if(!f.type.match('text/csv')) continue;
