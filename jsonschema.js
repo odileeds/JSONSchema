@@ -9,7 +9,7 @@ window.requestAnimFrame = (function(){
 })();
 
 /*!
- * ODI Leeds JSON Schema generator (version 1.0)
+ * ODI Leeds JSON Schema generator (version 1.1)
  */
 S(document).ready(function(){
 
