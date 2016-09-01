@@ -14,7 +14,6 @@ window.requestAnimFrame = (function(){
 S(document).ready(function(){
 
 
-
 	// Function to parse a CSV file and return a JSON structure
 	// Guesses the format of each column based on the data in it.
 	function CSV2JSON(data,start,end){
@@ -192,7 +191,7 @@ S(document).ready(function(){
 	Schemer.prototype.parseCSV = function(data,attr){
 
 		this.csv = data;
-		
+
 		// Convert the CSV to a JSON structure
 		this.data = CSV2JSON(data);
 
@@ -323,6 +322,7 @@ S(document).ready(function(){
 	}
 
 	Schemer.prototype.handleFileSelect = function(evt,typ){
+
 		evt.stopPropagation();
 		evt.preventDefault();
 		dragOff();
@@ -330,7 +330,6 @@ S(document).ready(function(){
 		var files;
 		if(evt.dataTransfer && evt.dataTransfer.files) files = evt.dataTransfer.files; // FileList object.
 		if(!files && evt.target && evt.target.files) files = evt.target.files;
-		console.log(files,files.length,this)
 
 
 		if(typ == "csv"){
@@ -339,11 +338,12 @@ S(document).ready(function(){
 			var output = "";
 			for (var i = 0, f; i < files.length; i++) {
 				f = files[i];
+
 				this.file = f.name;
 				output += '<div><strong>'+ escape(f.name)+ '</strong> ('+ (f.type || 'n/a')+ ') - ' + f.size + ' bytes, last modified: ' + (f.lastModifiedDate ? f.lastModifiedDate.toLocaleDateString() : 'n/a') + '</div>';
 
-				// Only process csv files.
-				if(!f.type.match('text/csv')) continue;
+				// DEPRECATED as not reliable // Only process csv files.
+				//if(!f.type.match('text/csv')) continue;
 
 				var reader = new FileReader();
 
