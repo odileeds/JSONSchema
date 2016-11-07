@@ -226,6 +226,40 @@ S(document).ready(function(){
   }
 
   Schemer.prototype.convertFormat = function(format) {
+    years = {
+      'MMMM': '%B',
+      'MMM': '%b',
+      'MM': '%m',
+      'M': '%-m',
+      'Mo': '%-m',
+      'dddd': '%A',
+      'ddd': '%a',
+      'YYYY': '%Y',
+      'YY': '%y',
+      'DD': '%d',
+      'Do': '%e',
+      'D': '%e',
+      'A': '%p',
+      'a': '%P',
+      'HH': '%H',
+      'H': '%-H',
+      'hh': '%l',
+      'h': '%-l',
+      'mm': '%M',
+      'm': '%-M',
+      'ss': '%S',
+      's': '%-s',
+      'zz': '%Z',
+      'ZZ': '%Z',
+      'z': '%Z',
+      'Z': '%Z'
+    }
+
+    for (var i = 0; i < Object.keys(years).length; i++) {
+      var find = Object.keys(years)[i]
+      var replace = Object.values(years)[i]
+      format = format.replace(find, replace)
+    }
     return format
   }
 
@@ -487,7 +521,6 @@ S(document).ready(function(){
 	}
 
 	Schemer.prototype.validate = function(){
-
 		return false;
 	}
 
