@@ -209,7 +209,7 @@ S(document).ready(function(){
 
   // Guess a date format for a date column
   Schemer.prototype.buildDateFormat = function(rows, index) {
-    var formats = []
+    var formats = {}
     var possibleFormats = []
     var counts = {}
 
@@ -217,23 +217,25 @@ S(document).ready(function(){
     for(var i = 0; i < rows.length; i++) {
       var date = rows[i][index]
       try {
-        formats.push(moment.parseFormat(date))
+        formats[moment.parseFormat(date)] = 0
       } catch(err) {
         console.error('Parsing ' + date + ' caused error ' + err)
       }
     }
 
-    // Get a count for each unique type
-    formats.forEach(function(x) { counts[x] = (counts[x] || 0)+1; });
-
-    for(var i = 0; i < Object.keys(counts).length; i++) {
-      var format = Object.keys(counts)[i]
+    // Check if formats parse correctly
+    for(var i = 0; i < Object.keys(formats).length; i++) {
+      var format = Object.keys(formats)[i]
       for(var c = 0; c < rows.length; c++) {
+        // If it parses, add to the counter
         if (moment(rows[c][index], format).isValid()) {
-          possibleFormat = format
+          formats[format] += 1
         }
       }
     }
+
+    // Get the format with the highest count
+    possibleFormat = Object.keys(formats).reduce(function(a, b){ return formats[a] > formats[b] ? a : b });
 
     return this.convertFormat(possibleFormat)
   }
