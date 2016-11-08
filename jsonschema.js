@@ -216,7 +216,11 @@ S(document).ready(function(){
     // Get a date format for each row
     for(var i = 0; i < rows.length; i++) {
       var date = rows[i][index]
-      formats.push(moment.parseFormat(date))
+      try {
+        formats.push(moment.parseFormat(date))
+      } catch(err) {
+        console.error('Parsing ' + date + ' caused error ' + err)
+      }
     }
 
     // Get a count for each unique type
