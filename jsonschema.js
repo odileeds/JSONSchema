@@ -393,6 +393,7 @@ S(document).ready(function(){
 		if(row == "title") this.data.fields.title[col] = value;
 		if(row == "format") this.data.fields.format[col] = value;
 		if(row == "required") this.data.fields.required[col] = value;
+    if(row == "dateFormat") this.data.fields.dateFormats[col] = value;
 
 		// Go through form elements and update the format/constraints
 		this.buildSchema();
