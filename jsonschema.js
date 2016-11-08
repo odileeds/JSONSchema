@@ -210,6 +210,7 @@ S(document).ready(function(){
   // Guess a date format for a date column
   Schemer.prototype.buildDateFormat = function(rows, index) {
     var formats = []
+    var possibleFormats = []
     var counts = {}
 
     // Get a date format for each row
@@ -234,7 +235,7 @@ S(document).ready(function(){
   }
 
   Schemer.prototype.convertFormat = function(format) {
-    years = {
+    replacements = {
       'MMMM': '%B',
       'MMM': '%b',
       'MM': '%m',
@@ -263,12 +264,21 @@ S(document).ready(function(){
       'Z': '%Z'
     }
 
-    for (var i = 0; i < Object.keys(years).length; i++) {
-      var find = Object.keys(years)[i]
-      var replace = Object.values(years)[i]
-      format = format.replace(find, replace)
-    }
-    return format
+    // Build a regex of all the date symbols
+    splitter = new RegExp(Object.keys(replacements).join('|'))
+    // Get any delimeter(s)
+    arr = format.split(splitter)
+    delimeters = arr.filter(String).filter(function (e, i, arr) {
+      return arr.lastIndexOf(e) === i;
+    });
+    // Get the symbols to replace
+    keys = format.split(delimeters)
+    // Replace keys with strftime-style keys
+    newKeys = keys.map(function(k) {
+      return replacements[k]
+    })
+    // Join back with our delimter(s)
+    return newKeys.join(delimeters)
   }
 
 	// Return an HTML true/false select box
@@ -406,7 +416,7 @@ S(document).ready(function(){
 			json += '\t\t\t"title": "'+this.data.fields.title[c]+'",\n';
 			json += '\t\t\t"constraints": {\n';
 			json += '\t\t\t\t"required": '+this.data.fields.required[c]+',\n';
-      if (this.data.dateFormats[c]) {
+      if (this.data.dateFormats && this.data.dateFormats[c]) {
         json += '\t\t\t\t"type": "'+ref+'",\n';
         json += '\t\t\t\t"datePattern": "'+this.data.dateFormats[c]+'"\n';
       } else {
