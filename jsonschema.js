@@ -215,14 +215,22 @@ S(document).ready(function(){
     // Get a date format for each row
     for(var i = 0; i < rows.length; i++) {
       var date = rows[i][index]
-      var format = moment.parseFormat(date)
-      formats.push(this.convertFormat(format))
+      formats.push(moment.parseFormat(date))
     }
 
     // Get a count for each unique type
     formats.forEach(function(x) { counts[x] = (counts[x] || 0)+1; });
-    // Return the most likely type
-    return Object.keys(counts).reduce(function(m, k){ return counts[k] > m ? k : m }, -Infinity);
+
+    for(var i = 0; i < Object.keys(counts).length; i++) {
+      var format = Object.keys(counts)[i]
+      for(var c = 0; c < rows.length; c++) {
+        if (moment(rows[c][index], format).isValid()) {
+          possibleFormat = format
+        }
+      }
+    }
+
+    return this.convertFormat(possibleFormat)
   }
 
   Schemer.prototype.convertFormat = function(format) {
