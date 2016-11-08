@@ -345,14 +345,14 @@ S(document).ready(function(){
 
     // If we have any dateFormats, add them to the relevant column
     if (Object.keys(dateFormats).length > 0) {
-      this.data.dateFormats = new Array(this.data.fields.length)
+      this.data.fields.dateFormats = new Array(this.data.fields.length)
       table += '<tr id="formats"><th>Date Format:</th>';
       for (i = 0 ; i < this.data.fields.name.length; i++) {
         if (typeof(dateFormats[i]) == 'undefined') {
           table += '<th></th>'
         } else {
-          table += '<th><input type="text" value="' + dateFormats[i] +'" /></th>'
-          this.data.dateFormats[i] = dateFormats[i]
+          table += '<th><input type="text" value="' + dateFormats[i] +'" data-row="dateFormat" data-col="'+ i +'" id="dateFormat-'+ i +'" /></th>'
+          this.data.fields.dateFormats[i] = dateFormats[i]
         }
       }
       table += '</tr>'
@@ -416,9 +416,9 @@ S(document).ready(function(){
 			json += '\t\t\t"title": "'+this.data.fields.title[c]+'",\n';
 			json += '\t\t\t"constraints": {\n';
 			json += '\t\t\t\t"required": '+this.data.fields.required[c]+',\n';
-      if (this.data.dateFormats && this.data.dateFormats[c]) {
+      if (this.data.fields.dateFormats && this.data.fields.dateFormats[c]) {
         json += '\t\t\t\t"type": "'+ref+'",\n';
-        json += '\t\t\t\t"datePattern": "'+this.data.dateFormats[c]+'"\n';
+        json += '\t\t\t\t"datePattern": "'+this.data.fields.dateFormats[c]+'"\n';
       } else {
         json += '\t\t\t\t"type": "'+ref+'"\n';
       }
