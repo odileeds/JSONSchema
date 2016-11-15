@@ -86,7 +86,7 @@ S(document).ready(function(){
 				rows++;
 			}
 		}
-		
+
 		// Now, for each column, we sum the different formats we've found
 		var format = new Array(header.length);
 		for(var j = 0; j < header.length; j++){
@@ -160,7 +160,7 @@ S(document).ready(function(){
 
 		this.maxrows = 1000;	// Limit on the number of rows to display
 		this.maxcells = 3000;	// The row limit can be over-ridden by the maximum number of cells to show
-		
+
 		// The supported data types as specified in http://csvlint.io/about
 		//this.datatypes = [{"label":"string","ref":"http://www.w3.org/2001/XMLSchema#string"},{"label":"integer","ref":"http://www.w3.org/2001/XMLSchema#int"},{"label":"float","ref":"http://www.w3.org/2001/XMLSchema#float"},{"label":"double","ref":"http://www.w3.org/2001/XMLSchema#double"},{"label":"URL","ref":"http://www.w3.org/2001/XMLSchema#anyURI"},{"label":"boolean","ref":"http://www.w3.org/2001/XMLSchema#boolean"},{"label":"non-positive integer","ref":"http://www.w3.org/2001/XMLSchema#nonPositiveInteger"}, {"label":"positive integer","ref":"http://www.w3.org/2001/XMLSchema#positiveInteger"}, {"label":"non-negative integer","ref":"http://www.w3.org/2001/XMLSchema#nonNegativeInteger"}, {"label":"negative integer","ref":"http://www.w3.org/2001/XMLSchema#negativeInteger"},{"label":"date","ref":"http://www.w3.org/2001/XMLSchema#date"}, {"label":"date & time","ref":"http://www.w3.org/2001/XMLSchema#dateTime"},{"label":"year","ref":"http://www.w3.org/2001/XMLSchema#gYear"},{"label":"year & month","ref":"http://www.w3.org/2001/XMLSchema#gYearMonth"},{"label":"time","ref":"http://www.w3.org/2001/XMLSchema#time "}];
 		this.datatypes = [{"label":"string","ref":"http://www.w3.org/2001/XMLSchema#string"},{"label":"integer","ref":"http://www.w3.org/2001/XMLSchema#int"},{"label":"float","ref":"http://www.w3.org/2001/XMLSchema#float"},{"label":"double","ref":"http://www.w3.org/2001/XMLSchema#double"},{"label":"URL","ref":"http://www.w3.org/2001/XMLSchema#anyURI"},{"label":"boolean","ref":"http://www.w3.org/2001/XMLSchema#boolean"},{"label":"date","ref":"http://www.w3.org/2001/XMLSchema#date"}, {"label":"datetime","ref":"http://www.w3.org/2001/XMLSchema#dateTime"},{"label":"year","ref":"http://www.w3.org/2001/XMLSchema#gYear"},{"label":"time","ref":"http://www.w3.org/2001/XMLSchema#time "}];
@@ -172,7 +172,7 @@ S(document).ready(function(){
 		S('#schema textarea').on('focus',function(){
 			this.e[0].select()
 		});
-		
+
 		S('#save').on('click',{me:this},function(e){
 			e.data.me.save();
 		});
@@ -206,7 +206,87 @@ S(document).ready(function(){
 		html += "</select>";
 		return html;
 	}
-	
+
+  // Guess a date format for a date column
+  Schemer.prototype.buildDateFormat = function(rows, index) {
+    var formats = {}
+    var possibleFormats = []
+    var counts = {}
+
+    // Get a date format for each row
+    for(var i = 0; i < rows.length; i++) {
+      var date = rows[i][index]
+      try {
+        formats[moment.parseFormat(date)] = 0
+      } catch(err) {
+        console.error('Parsing ' + date + ' caused error ' + err)
+      }
+    }
+
+    // Check if formats parse correctly
+    for(var i = 0; i < Object.keys(formats).length; i++) {
+      var format = Object.keys(formats)[i]
+      for(var c = 0; c < rows.length; c++) {
+        // If it parses, add to the counter
+        if (moment(rows[c][index], format).isValid()) {
+          formats[format] += 1
+        }
+      }
+    }
+
+    // Get the format with the highest count
+    possibleFormat = Object.keys(formats).reduce(function(a, b){ return formats[a] > formats[b] ? a : b });
+
+    return this.convertFormat(possibleFormat)
+  }
+
+  Schemer.prototype.convertFormat = function(format) {
+    replacements = {
+      'MMMM': '%B',
+      'MMM': '%b',
+      'MM': '%m',
+      'M': '%-m',
+      'Mo': '%-m',
+      'dddd': '%A',
+      'ddd': '%a',
+      'YYYY': '%Y',
+      'YY': '%y',
+      'DD': '%d',
+      'Do': '%e',
+      'D': '%e',
+      'A': '%p',
+      'a': '%P',
+      'HH': '%H',
+      'H': '%-H',
+      'hh': '%l',
+      'h': '%-l',
+      'mm': '%M',
+      'm': '%-M',
+      'ss': '%S',
+      's': '%-s',
+      'zz': '%Z',
+      'ZZ': '%Z',
+      'z': '%Z',
+      'Z': '%Z'
+    }
+
+    // Build a regex of all the date symbols
+    splitter = new RegExp(Object.keys(replacements).join('|'))
+    // Get any delimeter(s)
+    arr = format.split(splitter)
+    delimeters = arr.filter(String).filter(function (e, i, arr) {
+      return arr.lastIndexOf(e) === i;
+    });
+    // Get the symbols to replace
+    keys = format.split(delimeters)
+    // Replace keys with strftime-style keys
+    newKeys = keys.map(function(k) {
+      return replacements[k]
+    })
+    // Join back with our delimter(s)
+    return newKeys.join(delimeters)
+  }
+
 	// Return an HTML true/false select box
 	Schemer.prototype.buildTrueFalse = function(yes,row,col){
 		var html = '<select id="'+row+'-'+col+'" data-row="'+row+'" data-col="'+col+'">';
@@ -215,7 +295,7 @@ S(document).ready(function(){
 		html += "</select>";
 		return html;
 	}
-	
+
 	// Parse the CSV file
 	Schemer.prototype.parseCSV = function(data,attr){
 
@@ -226,7 +306,7 @@ S(document).ready(function(){
 			// so limit the number of rows
 			this.maxrows = Math.floor(this.maxcells/attr.cols);
 		}
-		this.records = attr.rows; 
+		this.records = attr.rows;
 
 		// Convert the CSV to a JSON structure
 		this.data = CSV2JSON(data,1,this.maxrows+1);
@@ -259,10 +339,30 @@ S(document).ready(function(){
 
 		table += '</tr>';
 		table += '<tr><th>Type:</th>';
+    dateFormats = {}
 		for(var c in this.data.fields.name){
-			table += '<th>'+this.buildSelect(this.data.fields.format[c],"format",c)+'</th>';
+			table +=  '<th>' + this.buildSelect(this.data.fields.format[c],"format",c) + '</th>'
+      // If the format is datetime, get a format
+      if (this.data.fields.format[c] == 'datetime') {
+        dateFormats[c] = this.buildDateFormat(this.data.rows, c)
+      }
 		}
 		table += '</tr>';
+
+    // If we have any dateFormats, add them to the relevant column
+    if (Object.keys(dateFormats).length > 0) {
+      this.data.fields.dateFormats = new Array(this.data.fields.length)
+      table += '<tr id="formats"><th>Date Format:</th>';
+      for (i = 0 ; i < this.data.fields.name.length; i++) {
+        if (typeof(dateFormats[i]) == 'undefined') {
+          table += '<th></th>'
+        } else {
+          table += '<th><input type="text" value="' + dateFormats[i] +'" data-row="dateFormat" data-col="'+ i +'" id="dateFormat-'+ i +'" /></th>'
+          this.data.fields.dateFormats[i] = dateFormats[i]
+        }
+      }
+      table += '</tr>'
+    }
 
 		table += '<tr><th></th>';
 		for(var c in this.data.fields.name){
@@ -299,13 +399,14 @@ S(document).ready(function(){
 		if(row == "title") this.data.fields.title[col] = value;
 		if(row == "format") this.data.fields.format[col] = value;
 		if(row == "required") this.data.fields.required[col] = value;
+    if(row == "dateFormat") this.data.fields.dateFormats[col] = value;
 
 		// Go through form elements and update the format/constraints
 		this.buildSchema();
 
 		return this;
 	}
-			
+
 	// Build the JSON schema
 	Schemer.prototype.buildSchema = function(){
 		var ref,t,c,json,i,lines;
@@ -322,7 +423,12 @@ S(document).ready(function(){
 			json += '\t\t\t"title": "'+this.data.fields.title[c]+'",\n';
 			json += '\t\t\t"constraints": {\n';
 			json += '\t\t\t\t"required": '+this.data.fields.required[c]+',\n';
-			json += '\t\t\t\t"type": "'+ref+'"\n';
+      if (this.data.fields.dateFormats && this.data.fields.dateFormats[c]) {
+        json += '\t\t\t\t"type": "'+ref+'",\n';
+        json += '\t\t\t\t"datePattern": "'+this.data.fields.dateFormats[c]+'"\n';
+      } else {
+        json += '\t\t\t\t"type": "'+ref+'"\n';
+      }
 			json += '\t\t\t}\n';
 			json += '\t\t}'+(i < this.data.fields.format.length-1 ? ',':'')+'\n';
 			i++;
@@ -419,7 +525,7 @@ S(document).ready(function(){
 						scheme.parseCSV(result,{'url':f.name,'cols':cols.length,'rows':lines.length});
 					}
 				};
-				
+
 				// Read in the image file as a data URL.
 				//reader.readAsText(f);
 				var blob = f.slice(start,stop+1);
@@ -440,11 +546,10 @@ S(document).ready(function(){
 	}
 
 	Schemer.prototype.validate = function(){
-
 		return false;
 	}
 
 	// Define a new instance of the Schemer
 	var scheme = new Schemer();
-	
+
 });
